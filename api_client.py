@@ -15,8 +15,8 @@ class ApiClient:
             self.base_url = "http://localhost:5001/qgis2onlinemap/europe-west1/api" 
             self.app_url = "http://localhost:5000/app"
         else:
-            self.base_url = "https://qgis2onlinemap.com/api" 
-            self.app_url = "https://qgis2onlinemap.com/app" 
+            self.base_url = "https://api-fbbsmbr3fq-ew.a.run.app" 
+            self.app_url = "https://qgis2onlinemap.com/app"
 
     def get_maps(self):
         """
