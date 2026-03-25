@@ -1,6 +1,7 @@
 [general]
 name=Qgis2OnlineMap
 qgisMinimumVersion=3.0
+qgisMaximumVersion=4.99
 description=One-click web map hosting. Share your QGIS, qgis2web, and Qgis2threejs projects online instantly.
 version=1.0.0
 author=Abdoulaye Diakite
