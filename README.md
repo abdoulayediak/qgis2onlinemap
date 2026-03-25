@@ -1,6 +1,6 @@
 # Qgis2OnlineMap - QGIS Plugin
 
-**Qgis2OnlineMap** is a companion QGIS plugin that allows you to directly upload, publish, and manage your exported QGIS web maps without dealing with servers, hosting, or complicated configurations. It works as a bridge between your QGIS workspace and the [Qgis2OnlineMap](https://qgis2onlinemap.com) cloud platform.
+**Qgis2OnlineMap** is a companion QGIS plugin that allows you to directly upload, publish, and manage your exported QGIS web maps without dealing with servers, hosting, or complicated configurations. It works as a bridge between your QGIS workspace and the [Qgis2OnlineMap](https://qgis2onlinemap.com) cloud platform (you will need to create a free account).
 
 ## Features
 
