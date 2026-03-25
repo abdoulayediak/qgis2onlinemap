@@ -33,11 +33,35 @@ try:
     USER_ROLE = QtCore.Qt.ItemDataRole.UserRole
     ECHO_PASSWORD = QtWidgets.QLineEdit.EchoMode.Password
     WAIT_CURSOR = QtCore.Qt.CursorShape.WaitCursor
+    HEADER_STRETCH = QtWidgets.QHeaderView.ResizeMode.Stretch
+    HEADER_RESIZE_TO_CONTENTS = QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+    HEADER_INTERACTIVE = QtWidgets.QHeaderView.ResizeMode.Interactive
+    ALIGN_CENTER = QtCore.Qt.AlignmentFlag.AlignCenter
+    POINTING_HAND_CURSOR = QtCore.Qt.CursorShape.PointingHandCursor
+    WINDOW_MODAL = QtCore.Qt.WindowModality.WindowModal
+    SIZE_PREFERRED = QtWidgets.QSizePolicy.Policy.Preferred
+    SIZE_FIXED = QtWidgets.QSizePolicy.Policy.Fixed
+    SELECT_ROWS = QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+    NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+    MSG_YES = QtWidgets.QMessageBox.StandardButton.Yes
+    MSG_NO = QtWidgets.QMessageBox.StandardButton.No
 except ImportError:
     from PyQt5 import QtWidgets, QtCore, QtGui
     USER_ROLE = QtCore.Qt.UserRole
     ECHO_PASSWORD = QtWidgets.QLineEdit.Password
     WAIT_CURSOR = QtCore.Qt.WaitCursor
+    HEADER_STRETCH = QtWidgets.QHeaderView.Stretch
+    HEADER_RESIZE_TO_CONTENTS = QtWidgets.QHeaderView.ResizeToContents
+    HEADER_INTERACTIVE = QtWidgets.QHeaderView.Interactive
+    ALIGN_CENTER = QtCore.Qt.AlignCenter
+    POINTING_HAND_CURSOR = QtCore.Qt.PointingHandCursor
+    WINDOW_MODAL = QtCore.Qt.WindowModal
+    SIZE_PREFERRED = QtWidgets.QSizePolicy.Preferred
+    SIZE_FIXED = QtWidgets.QSizePolicy.Fixed
+    SELECT_ROWS = QtWidgets.QAbstractItemView.SelectRows
+    NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.NoEditTriggers
+    MSG_YES = QtWidgets.QMessageBox.Yes
+    MSG_NO = QtWidgets.QMessageBox.No
 
 from .api_client import ApiClient
 
@@ -95,8 +119,8 @@ class PluginDialog(QtWidgets.QDialog):
         self.setWindowTitle("Qgis2OnlineMap - Publish Maps Online")
         self.resize(819, 513)
         
-        # --- Modern Styling ---
-        self.apply_custom_styling()
+        # --- Modern Styling (Now optional) ---
+        # self.apply_custom_styling()
         
         self.layout = QtWidgets.QVBoxLayout(self)
         
@@ -110,19 +134,12 @@ class PluginDialog(QtWidgets.QDialog):
         self.table_widget = QtWidgets.QTableWidget(0, 4)
         self.table_widget.setHorizontalHeaderLabels(["Map Name", "Updated", "Online", "Actions"])
         self.table_widget.horizontalHeader().setStretchLastSection(False)
-        if hasattr(QtWidgets.QHeaderView, 'Stretch'):
-            self.table_widget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-            self.table_widget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-            self.table_widget.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
-            # self.table_widget.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
-        elif hasattr(QtWidgets.QHeaderView, 'ResizeMode'):
-            self.table_widget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-            self.table_widget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-            self.table_widget.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
-            # self.table_widget.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
+        self.table_widget.horizontalHeader().setSectionResizeMode(0, HEADER_STRETCH)
+        self.table_widget.horizontalHeader().setSectionResizeMode(1, HEADER_RESIZE_TO_CONTENTS)
+        self.table_widget.horizontalHeader().setSectionResizeMode(2, HEADER_RESIZE_TO_CONTENTS)
         self.table_widget.verticalHeader().setDefaultSectionSize(40)
-        self.table_widget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.table_widget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.table_widget.setSelectionBehavior(SELECT_ROWS)
+        self.table_widget.setEditTriggers(NO_EDIT_TRIGGERS)
         self.table_widget.setSortingEnabled(True)
         self.maps_layout.addWidget(self.table_widget)
         
@@ -168,7 +185,7 @@ class PluginDialog(QtWidgets.QDialog):
         self.drop_area_layout.setContentsMargins(20, 20, 20, 20)
         
         self.upload_msg = QtWidgets.QLabel("📂 Drag & Drop a folder or .zip file here\nor use the controls above to select your map.")
-        self.upload_msg.setAlignment(QtCore.Qt.AlignCenter)
+        self.upload_msg.setAlignment(ALIGN_CENTER)
         self.upload_msg.setWordWrap(True)
         self.upload_msg.setStyleSheet("font-size: 14px; color: #64748b; font-weight: 500;")
         
@@ -205,12 +222,12 @@ class PluginDialog(QtWidgets.QDialog):
         auth_btn_layout = QtWidgets.QHBoxLayout()
         self.btn_login = QtWidgets.QPushButton("Login via Web Browser")
         self.btn_login.setObjectName("LoginBtn")
-        self.btn_login.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        self.btn_login.setSizePolicy(SIZE_PREFERRED, SIZE_FIXED)
 
         self.btn_logout = QtWidgets.QPushButton("Logout")
         self.btn_logout.setObjectName("LogoutBtn")
         self.btn_logout.setStyleSheet("color: #ef4444; font-weight: bold;")
-        self.btn_logout.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        self.btn_logout.setSizePolicy(SIZE_PREFERRED, SIZE_FIXED)
 
         auth_btn_layout.addWidget(self.btn_login)
         auth_btn_layout.addWidget(self.btn_logout)
@@ -224,7 +241,7 @@ class PluginDialog(QtWidgets.QDialog):
         appearance_group = QtWidgets.QGroupBox("Appearance")
         appearance_layout = QtWidgets.QVBoxLayout(appearance_group)
         self.chk_theme = QtWidgets.QCheckBox("Use custom theme")
-        self.chk_theme.setChecked(True)
+        self.chk_theme.setChecked(False)
         appearance_layout.addWidget(self.chk_theme)
         self.settings_layout.addWidget(appearance_group)
 
@@ -390,7 +407,7 @@ class PluginDialog(QtWidgets.QDialog):
         settings.beginGroup("Qgis2OnlineMapPlugin")
         api_key = settings.value("api_key", "")
         env = settings.value("env", "Production")
-        use_theme = settings.value("use_custom_theme", True, type=bool)
+        use_theme = settings.value("use_custom_theme", False, type=bool)
         settings.endGroup()
         
         self.cmb_env.setCurrentText(env)
@@ -589,7 +606,7 @@ class PluginDialog(QtWidgets.QDialog):
 
                 # Online status cell — centred circle emoji
                 status_label = QtWidgets.QLabel('🟢' if is_online else '🔴')
-                status_label.setAlignment(QtCore.Qt.AlignCenter)
+                status_label.setAlignment(ALIGN_CENTER)
                 status_widget = QtWidgets.QWidget()
                 status_layout = QtWidgets.QHBoxLayout(status_widget)
                 status_layout.setContentsMargins(0, 0, 0, 0)
@@ -609,7 +626,7 @@ class PluginDialog(QtWidgets.QDialog):
                 else:
                     btn_view.setMinimumHeight(27)
                 btn_view.setStyleSheet("background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;")
-                btn_view.setCursor(QtCore.Qt.PointingHandCursor)
+                btn_view.setCursor(POINTING_HAND_CURSOR)
                 btn_view.clicked.connect(lambda checked, m=map_data: self.view_on_web(m))
                 
                 btn_copy = QtWidgets.QPushButton("🔗" if is_themed else "Copy")
@@ -619,7 +636,7 @@ class PluginDialog(QtWidgets.QDialog):
                 else:
                     btn_copy.setMinimumHeight(27)
                 btn_copy.setStyleSheet("background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;")
-                btn_copy.setCursor(QtCore.Qt.PointingHandCursor)
+                btn_copy.setCursor(POINTING_HAND_CURSOR)
                 btn_copy.clicked.connect(lambda checked, m=map_data: self.copy_link(m))
                 
                 btn_update = QtWidgets.QPushButton("🔄" if is_themed else "Update")
@@ -629,7 +646,7 @@ class PluginDialog(QtWidgets.QDialog):
                 else:
                     btn_update.setMinimumHeight(27)
                 btn_update.setStyleSheet("background-color: #8b5cf6; color: white; border: 1px solid #7c3aed; border-radius: 4px; font-size: 12px;")
-                btn_update.setCursor(QtCore.Qt.PointingHandCursor)
+                btn_update.setCursor(POINTING_HAND_CURSOR)
                 
                 update_menu = QtWidgets.QMenu()
                 action_update_folder = update_menu.addAction("📂 Local Folder...")
@@ -648,13 +665,13 @@ class PluginDialog(QtWidgets.QDialog):
                 self.table_widget.setCellWidget(row, 2, status_widget)
                 self.table_widget.setCellWidget(row, 3, action_widget)
             self.table_widget.setSortingEnabled(True)
-            self.table_widget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-            self.table_widget.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeToContents)
+            self.table_widget.horizontalHeader().setSectionResizeMode(1, HEADER_RESIZE_TO_CONTENTS)
+            self.table_widget.horizontalHeader().setSectionResizeMode(2, HEADER_RESIZE_TO_CONTENTS)
             
             if is_themed:
-                self.table_widget.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
+                self.table_widget.horizontalHeader().setSectionResizeMode(3, HEADER_RESIZE_TO_CONTENTS)
             else:
-                self.table_widget.horizontalHeader().setSectionResizeMode(3, QtWidgets.QHeaderView.Interactive)
+                self.table_widget.horizontalHeader().setSectionResizeMode(3, HEADER_INTERACTIVE)
                 self.table_widget.setColumnWidth(3, 220)
         except Exception as e:
             print(f"Error populating table: {e}")
@@ -730,7 +747,7 @@ class PluginDialog(QtWidgets.QDialog):
 
         self.progress_dialog = QtWidgets.QProgressDialog("Communicating with server, please wait...", None, 0, 0, self)
         self.progress_dialog.setWindowTitle("Please Wait")
-        self.progress_dialog.setWindowModality(QtCore.Qt.WindowModal)
+        self.progress_dialog.setWindowModality(WINDOW_MODAL)
         self.progress_dialog.setCancelButton(None) # Remove cancel button to make it a true modal loader
         self.progress_dialog.show()
 
@@ -750,10 +767,10 @@ class PluginDialog(QtWidgets.QDialog):
         reply = QtWidgets.QMessageBox.question(
             self, "Upload Success",
             "Map uploaded/updated successfully.\n\nOpen in browser now?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            MSG_YES | MSG_NO
         )
         self.refresh_maps()
-        if reply == QtWidgets.QMessageBox.Yes and map_id:
+        if reply == MSG_YES and map_id:
             self.view_on_web({'id': map_id})
         
     def _on_upload_error(self, err_msg):
