@@ -38,7 +38,7 @@
 ## About
 
 **Author:** Abdoulaye Diakite  
-**Website:** [qgis2onlinemap.com](https://qgis2onlinemap.com)
+**Website:** [qgis2onlinemap.com](https://qgis2onlinemap.com)  
 **Demo:** [Sydney CBD (hosted 3D map)](https://qgis2onlinemap.com/v/571ef7c8)
 
 *Built for QGIS users pushing the boundaries of spatial data sharing.*
