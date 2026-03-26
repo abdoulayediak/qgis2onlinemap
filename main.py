@@ -2,8 +2,11 @@ import os
 
 # Compatibility layer for PyQt5/PyQt6
 try:
-    from PyQt6 import QtWidgets, QtCore, QtGui
-    QAction = QtGui.QAction
+    from qgis.PyQt import QtWidgets, QtCore, QtGui
+    if QtCore.QT_VERSION >= 0x060000:
+        QAction = QtGui.QAction
+    else:
+        QAction = QtWidgets.QAction
 except ImportError:
     from PyQt5 import QtWidgets, QtCore, QtGui
     QAction = QtWidgets.QAction
@@ -62,7 +65,7 @@ class Qgis2OnlineMapPlugin:
         
         # Add toolbar button and menu item
         self.iface.addToolBarIcon(self.action)
-        self.iface.addPluginToMenu("&Qgis2OnlineMap", self.action)
+        self.iface.addPluginToWebMenu("&Qgis2OnlineMap", self.action)
 
     def unload(self):
         """

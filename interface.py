@@ -1,20 +1,24 @@
 import os
-from qgis.core import QgsSettings
-from qgis.gui import QgsFileWidget
 import threading
 import webbrowser
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+from qgis.core import QgsSettings
+from qgis.gui import QgsFileWidget
+
+from .api_client import ApiClient
+
+
 class OAuthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         query = urllib.parse.urlparse(self.path).query
         params = urllib.parse.parse_qs(query)
-        
+
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        
+
         if 'token' in params:
             token = params['token'][0]
             self.server.token = token
@@ -25,45 +29,50 @@ class OAuthHandler(BaseHTTPRequestHandler):
             self.wfile.write(html.encode('utf-8'))
 
     def log_message(self, format, *args):
-        pass # Suppress console logging
+        pass  # Suppress console logging
 
 # Compatibility layer for PyQt5/PyQt6
 try:
-    from PyQt6 import QtWidgets, QtCore, QtGui
-    USER_ROLE = QtCore.Qt.ItemDataRole.UserRole
-    ECHO_PASSWORD = QtWidgets.QLineEdit.EchoMode.Password
-    WAIT_CURSOR = QtCore.Qt.CursorShape.WaitCursor
-    HEADER_STRETCH = QtWidgets.QHeaderView.ResizeMode.Stretch
-    HEADER_RESIZE_TO_CONTENTS = QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-    HEADER_INTERACTIVE = QtWidgets.QHeaderView.ResizeMode.Interactive
-    ALIGN_CENTER = QtCore.Qt.AlignmentFlag.AlignCenter
-    POINTING_HAND_CURSOR = QtCore.Qt.CursorShape.PointingHandCursor
-    WINDOW_MODAL = QtCore.Qt.WindowModality.WindowModal
-    SIZE_PREFERRED = QtWidgets.QSizePolicy.Policy.Preferred
-    SIZE_FIXED = QtWidgets.QSizePolicy.Policy.Fixed
-    SELECT_ROWS = QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-    NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-    MSG_YES = QtWidgets.QMessageBox.StandardButton.Yes
-    MSG_NO = QtWidgets.QMessageBox.StandardButton.No
+    from qgis.PyQt import QtWidgets, QtCore, QtGui
+    if QtCore.QT_VERSION >= 0x060000:
+        # Qt 6 scoped enums
+        USER_ROLE = QtCore.Qt.ItemDataRole.UserRole
+        ECHO_PASSWORD = QtWidgets.QLineEdit.EchoMode.Password
+        WAIT_CURSOR = QtCore.Qt.CursorShape.WaitCursor
+        HEADER_STRETCH = QtWidgets.QHeaderView.ResizeMode.Stretch
+        HEADER_RESIZE_TO_CONTENTS = QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+        HEADER_INTERACTIVE = QtWidgets.QHeaderView.ResizeMode.Interactive
+        ALIGN_CENTER = QtCore.Qt.AlignmentFlag.AlignCenter
+        POINTING_HAND_CURSOR = QtCore.Qt.CursorShape.PointingHandCursor
+        WINDOW_MODAL = QtCore.Qt.WindowModality.WindowModal
+        SIZE_PREFERRED = QtWidgets.QSizePolicy.Policy.Preferred
+        SIZE_FIXED = QtWidgets.QSizePolicy.Policy.Fixed
+        SELECT_ROWS = QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        MSG_YES = QtWidgets.QMessageBox.StandardButton.Yes
+        MSG_NO = QtWidgets.QMessageBox.StandardButton.No
+    else:
+        # Qt 5 legacy enums
+        USER_ROLE = QtCore.Qt.UserRole
+        ECHO_PASSWORD = QtWidgets.QLineEdit.Password
+        WAIT_CURSOR = QtCore.Qt.WaitCursor
+        HEADER_STRETCH = QtWidgets.QHeaderView.Stretch
+        HEADER_RESIZE_TO_CONTENTS = QtWidgets.QHeaderView.ResizeToContents
+        HEADER_INTERACTIVE = QtWidgets.QHeaderView.Interactive
+        ALIGN_CENTER = QtCore.Qt.AlignCenter
+        POINTING_HAND_CURSOR = QtCore.Qt.PointingHandCursor
+        WINDOW_MODAL = QtCore.Qt.WindowModal
+        SIZE_PREFERRED = QtWidgets.QSizePolicy.Preferred
+        SIZE_FIXED = QtWidgets.QSizePolicy.Fixed
+        SELECT_ROWS = QtWidgets.QAbstractItemView.SelectRows
+        NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.NoEditTriggers
+        MSG_YES = QtWidgets.QMessageBox.Yes
+        MSG_NO = QtWidgets.QMessageBox.No
 except ImportError:
     from PyQt5 import QtWidgets, QtCore, QtGui
-    USER_ROLE = QtCore.Qt.UserRole
-    ECHO_PASSWORD = QtWidgets.QLineEdit.Password
-    WAIT_CURSOR = QtCore.Qt.WaitCursor
-    HEADER_STRETCH = QtWidgets.QHeaderView.Stretch
-    HEADER_RESIZE_TO_CONTENTS = QtWidgets.QHeaderView.ResizeToContents
-    HEADER_INTERACTIVE = QtWidgets.QHeaderView.Interactive
-    ALIGN_CENTER = QtCore.Qt.AlignCenter
-    POINTING_HAND_CURSOR = QtCore.Qt.PointingHandCursor
-    WINDOW_MODAL = QtCore.Qt.WindowModal
-    SIZE_PREFERRED = QtWidgets.QSizePolicy.Preferred
-    SIZE_FIXED = QtWidgets.QSizePolicy.Fixed
-    SELECT_ROWS = QtWidgets.QAbstractItemView.SelectRows
-    NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.NoEditTriggers
-    MSG_YES = QtWidgets.QMessageBox.Yes
-    MSG_NO = QtWidgets.QMessageBox.No
+    # Fallback to standard names if needed
+    pass
 
-from .api_client import ApiClient
 
 class DragDropUploadWidget(QtWidgets.QWidget):
     fileDropped = QtCore.pyqtSignal(str)
@@ -94,6 +103,7 @@ class DragDropUploadWidget(QtWidgets.QWidget):
             event.acceptProposedAction()
         else:
             event.ignore()
+
 
 class PluginDialog(QtWidgets.QDialog):
     LOGIN_TIMEOUT_SECONDS = 60  # 1-minute timeout for browser login
@@ -479,6 +489,8 @@ class PluginDialog(QtWidgets.QDialog):
         try:
             if self.httpd:
                 self.httpd.shutdown()
+                self.httpd.server_close()
+                self.httpd = None
 
             self.httpd = HTTPServer(('localhost', 0), OAuthHandler)
             self.httpd.token = None
@@ -504,7 +516,11 @@ class PluginDialog(QtWidgets.QDialog):
         self.btn_login.setEnabled(True)
         self.btn_login.setText("Login via Web Browser")
         if self.httpd:
-            threading.Thread(target=self.httpd.shutdown).start()
+            # Shutdown and close server safely
+            def cleanup(server):
+                server.shutdown()
+                server.server_close()
+            threading.Thread(target=cleanup, args=(self.httpd,)).start()
             self.httpd = None
 
     def check_login_status(self):

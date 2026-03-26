@@ -13,4 +13,3 @@ repository=https://github.com/abdoulayediak/qgis2onlinemap
 category=Web
 tags=hosting, cloud, publish, share, qgis2threejs, qgis2web, 3D, BIM, digital twin, webmap, leaflet, openlayers, gltf
 icon=icon.png
-supportsQt6=True
