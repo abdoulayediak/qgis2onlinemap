@@ -43,6 +43,9 @@ class ApiClient:
         nam = QgsNetworkAccessManager.instance()
         loop = QEventLoop()
 
+        # Ensure we follow redirects (crucial for Firebase Hosting rewrites)
+        request.setAttribute(QNetworkRequest.FollowRedirectsAttribute, True)
+
         if multipart:
             reply = nam.post(request, multipart)
         elif data:
@@ -86,7 +89,7 @@ class ApiClient:
         if not self.api_key:
             raise Exception("API Key is not set.")
 
-        url = f"{self.base_url}/maps"
+        url = f"{self.base_url}/maps/"
         request = QNetworkRequest(QUrl(url))
         request.setRawHeader(b"Authorization", f"Bearer {self.api_key}".encode('utf-8'))
 
@@ -127,7 +130,7 @@ class ApiClient:
         if not self.api_key:
             raise Exception("API Key is not set.")
 
-        url = f"{self.base_url}/upload"
+        url = f"{self.base_url}/upload/"
         request = QNetworkRequest(QUrl(url))
         request.setRawHeader(b"Authorization", f"Bearer {self.api_key}".encode('utf-8'))
 
