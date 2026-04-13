@@ -44,7 +44,24 @@ class ApiClient:
         loop = QEventLoop()
 
         # Ensure we follow redirects (crucial for Firebase Hosting rewrites)
-        request.setAttribute(QNetworkRequest.FollowRedirectsAttribute, True)
+        if hasattr(QNetworkRequest, 'FollowRedirectsAttribute'):
+            request.setAttribute(QNetworkRequest.FollowRedirectsAttribute, True)
+        else:
+            try:
+                if hasattr(QNetworkRequest, 'Attribute'):
+                    # Qt 6 scoped enums
+                    request.setAttribute(
+                        QNetworkRequest.Attribute.RedirectPolicyAttribute,
+                        QNetworkRequest.RedirectPolicy.NoLessSafeRedirectPolicy
+                    )
+                else:
+                    # Qt 5 scoped enums (Qt 5.6+)
+                    request.setAttribute(
+                        QNetworkRequest.RedirectPolicyAttribute,
+                        QNetworkRequest.NoLessSafeRedirectPolicy
+                    )
+            except AttributeError:
+                pass
 
         if multipart:
             reply = nam.post(request, multipart)

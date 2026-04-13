@@ -105,6 +105,68 @@ class DragDropUploadWidget(QtWidgets.QWidget):
             event.ignore()
 
 
+class NotLoggedInWidget(QtWidgets.QWidget):
+    def __init__(self, callback, parent=None):
+        super(NotLoggedInWidget, self).__init__(parent)
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(30)
+        
+        self.img_label = QtWidgets.QLabel()
+        
+        icon_dir = os.path.dirname(__file__)
+        gif_path = os.path.join(icon_dir, 'icon.gif')
+        png_path = os.path.join(icon_dir, 'icon.png')
+        
+        if os.path.exists(gif_path):
+            # Scale down slightly to fit well in the 819x513 dialog viewport
+            self.img_label.setFixedSize(500, 265) 
+            movie = QtGui.QMovie(gif_path)
+            movie.setScaledSize(QtCore.QSize(500, 265))
+            self.img_label.setMovie(movie)
+            movie.start()
+            # Store a reference so the movie is not garbage collected
+            self.img_label._movie = movie
+        elif os.path.exists(png_path):
+            self.img_label.setFixedSize(120, 120)
+            pixmap = QtGui.QPixmap(png_path)
+            self.img_label.setPixmap(pixmap)
+            self.img_label.setScaledContents(True)
+            
+        self.img_label.setAlignment(ALIGN_CENTER)
+        
+        text_layout = QtWidgets.QVBoxLayout()
+        text_layout.setSpacing(10)
+        
+        self.msg_title = QtWidgets.QLabel("Start Publishing in seconds")
+        self.msg_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #0f172a;")
+        
+        self.msg_text = QtWidgets.QLabel("Create a free account to unlock instant cloud hosting for your QGIS exports.")
+        self.msg_text.setWordWrap(True)
+        self.msg_text.setStyleSheet("font-size: 14px; color: #475569;")
+        
+        self.btn_dashboard = QtWidgets.QPushButton("Get Started")
+        self.btn_dashboard.setStyleSheet("background-color: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
+        self.btn_dashboard.setCursor(POINTING_HAND_CURSOR)
+        self.btn_dashboard.clicked.connect(callback)
+        
+        text_layout.addStretch()
+        text_layout.addWidget(self.msg_title)
+        text_layout.addWidget(self.msg_text)
+        
+        btn_layout = QtWidgets.QHBoxLayout()
+        btn_layout.addWidget(self.btn_dashboard)
+        btn_layout.addStretch()
+        
+        text_layout.addLayout(btn_layout)
+        text_layout.addStretch()
+        
+        layout.addStretch()
+        layout.addWidget(self.img_label)
+        layout.addLayout(text_layout)
+        layout.addStretch()
+
+
 class PluginDialog(QtWidgets.QDialog):
     LOGIN_TIMEOUT_SECONDS = 60  # 1-minute timeout for browser login
 
@@ -141,6 +203,13 @@ class PluginDialog(QtWidgets.QDialog):
         self.maps_tab = QtWidgets.QWidget()
         self.maps_layout = QtWidgets.QVBoxLayout(self.maps_tab)
         
+        self.maps_stack = QtWidgets.QStackedWidget()
+        self.maps_layout.addWidget(self.maps_stack)
+        
+        self.maps_content = QtWidgets.QWidget()
+        self.maps_content_layout = QtWidgets.QVBoxLayout(self.maps_content)
+        self.maps_content_layout.setContentsMargins(0, 0, 0, 0)
+        
         self.table_widget = QtWidgets.QTableWidget(0, 4)
         self.table_widget.setHorizontalHeaderLabels(["Map Name", "Updated", "Online", "Actions"])
         self.table_widget.horizontalHeader().setStretchLastSection(False)
@@ -151,7 +220,7 @@ class PluginDialog(QtWidgets.QDialog):
         self.table_widget.setSelectionBehavior(SELECT_ROWS)
         self.table_widget.setEditTriggers(NO_EDIT_TRIGGERS)
         self.table_widget.setSortingEnabled(True)
-        self.maps_layout.addWidget(self.table_widget)
+        self.maps_content_layout.addWidget(self.table_widget)
         
         self.btn_layout = QtWidgets.QHBoxLayout()
         self.btn_refresh = QtWidgets.QPushButton("Refresh List")
@@ -162,13 +231,25 @@ class PluginDialog(QtWidgets.QDialog):
         self.btn_layout.addWidget(self.btn_refresh)
         self.btn_layout.addWidget(self.btn_manage)
         
-        self.maps_layout.addLayout(self.btn_layout)
+        self.maps_content_layout.addLayout(self.btn_layout)
+        
+        self.maps_not_logged_in = NotLoggedInWidget(self.start_login)
+        self.maps_stack.addWidget(self.maps_not_logged_in)
+        self.maps_stack.addWidget(self.maps_content)
+        
         self.tabs.addTab(self.maps_tab, "Projects")
         
         # --- Tab: Publish ---
         self.upload_tab = DragDropUploadWidget()
         self.upload_tab.fileDropped.connect(self._handle_file_drop)
         self.upload_layout = QtWidgets.QVBoxLayout(self.upload_tab)
+        
+        self.upload_stack = QtWidgets.QStackedWidget()
+        self.upload_layout.addWidget(self.upload_stack)
+        
+        self.upload_content = QtWidgets.QWidget()
+        self.upload_content_layout = QtWidgets.QVBoxLayout(self.upload_content)
+        self.upload_content_layout.setContentsMargins(0, 0, 0, 0)
         
         self.upload_form = QtWidgets.QFormLayout()
         
@@ -184,8 +265,8 @@ class PluginDialog(QtWidgets.QDialog):
         self.map_name_edit.setPlaceholderText("Enter Map Title")
         self.upload_form.addRow("Map Title:", self.map_name_edit)
         
-        self.upload_layout.addLayout(self.upload_form)
-        self.upload_layout.addSpacing(16)
+        self.upload_content_layout.addLayout(self.upload_form)
+        self.upload_content_layout.addSpacing(16)
         
         # --- Drop Area ---
         self.drop_area_frame = QtWidgets.QFrame()
@@ -200,9 +281,9 @@ class PluginDialog(QtWidgets.QDialog):
         self.upload_msg.setStyleSheet("font-size: 14px; color: #64748b; font-weight: 500;")
         
         self.drop_area_layout.addWidget(self.upload_msg)
-        self.upload_layout.addWidget(self.drop_area_frame)
+        self.upload_content_layout.addWidget(self.drop_area_frame)
         
-        self.upload_layout.addStretch()
+        self.upload_content_layout.addStretch()
         
         # --- Action Buttons (Right aligned) ---
         self.action_btn_layout = QtWidgets.QHBoxLayout()
@@ -213,7 +294,12 @@ class PluginDialog(QtWidgets.QDialog):
         self.btn_do_upload.setFixedSize(110, 36)
         self.action_btn_layout.addWidget(self.btn_do_upload)
         
-        self.upload_layout.addLayout(self.action_btn_layout)
+        self.upload_content_layout.addLayout(self.action_btn_layout)
+        
+        self.upload_not_logged_in = NotLoggedInWidget(self.start_login)
+        self.upload_stack.addWidget(self.upload_not_logged_in)
+        self.upload_stack.addWidget(self.upload_content)
+
         
         self.tabs.addTab(self.upload_tab, "Publish Map")
         
@@ -437,24 +523,34 @@ class PluginDialog(QtWidgets.QDialog):
         self.update_login_ui()
 
     def update_login_ui(self, revoked=False):
-        if self.api_client.api_key:
-            if revoked:
+        if self.api_client.api_key and not revoked:
+            if hasattr(self, 'maps_stack'):
+                self.maps_stack.setCurrentWidget(self.maps_content)
+            if hasattr(self, 'upload_stack'):
+                self.upload_stack.setCurrentWidget(self.upload_content)
+                
+            self.lbl_status.setText("🟢 Status: Logged In")
+            self.lbl_status.setStyleSheet("color: #16a34a; font-weight: bold;")
+            self.btn_login.setText("Reconnect / Refresh Login")
+            self.btn_logout.setVisible(True)
+            self.refresh_maps()
+        else:
+            if hasattr(self, 'maps_stack'):
+                self.maps_stack.setCurrentWidget(self.maps_not_logged_in)
+            if hasattr(self, 'upload_stack'):
+                self.upload_stack.setCurrentWidget(self.upload_not_logged_in)
+
+            if revoked and self.api_client.api_key:
                 self.lbl_status.setText("⚪ Status: Revoked (Check Web Dashboard)")
                 self.lbl_status.setStyleSheet("color: #64748b; font-weight: bold;")
                 self.btn_login.setText("Re-authenticate")
+                self.btn_logout.setVisible(True)
             else:
-                self.lbl_status.setText("🟢 Status: Logged In")
-                self.lbl_status.setStyleSheet("color: #16a34a; font-weight: bold;")
-                self.btn_login.setText("Reconnect / Refresh Login")
-            self.btn_logout.setVisible(True)
-            if not revoked:
-                self.refresh_maps()
-        else:
-            self.lbl_status.setText("🔴 Status: Not Logged In")
-            self.lbl_status.setStyleSheet("color: #dc2626; font-weight: bold;")
-            self.btn_login.setText("Login via Web Browser")
-            self.btn_logout.setVisible(False)
-            self.table_widget.setRowCount(0)
+                self.lbl_status.setText("🔴 Status: Not Logged In")
+                self.lbl_status.setStyleSheet("color: #dc2626; font-weight: bold;")
+                self.btn_login.setText("Login via Web Dashboard")
+                self.btn_logout.setVisible(False)
+                self.table_widget.setRowCount(0)
 
     def logout(self):
         self.api_client.api_key = ""
