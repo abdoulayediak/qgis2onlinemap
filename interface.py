@@ -51,6 +51,7 @@ try:
         NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
         MSG_YES = QtWidgets.QMessageBox.StandardButton.Yes
         MSG_NO = QtWidgets.QMessageBox.StandardButton.No
+        FILE_WIDGET_DIRECTORY = QgsFileWidget.StorageMode.GetDirectory
     else:
         # Qt 5 legacy enums
         USER_ROLE = QtCore.Qt.UserRole
@@ -68,6 +69,7 @@ try:
         NO_EDIT_TRIGGERS = QtWidgets.QAbstractItemView.NoEditTriggers
         MSG_YES = QtWidgets.QMessageBox.Yes
         MSG_NO = QtWidgets.QMessageBox.No
+        FILE_WIDGET_DIRECTORY = QgsFileWidget.GetDirectory
 except ImportError:
     from PyQt5 import QtWidgets, QtCore, QtGui
     # Fallback to standard names if needed
@@ -103,6 +105,21 @@ class DragDropUploadWidget(QtWidgets.QWidget):
             event.acceptProposedAction()
         else:
             event.ignore()
+
+
+class SortableTableWidgetItem(QtWidgets.QTableWidgetItem):
+    """
+    A custom QTableWidgetItem that sorts based on a hidden sort_key 
+    rather than its display text.
+    """
+    def __init__(self, text, sort_key):
+        super().__init__(text)
+        self.sort_key = sort_key
+
+    def __lt__(self, other):
+        if isinstance(other, SortableTableWidgetItem):
+            return self.sort_key < other.sort_key
+        return super().__lt__(other)
 
 
 class NotLoggedInWidget(QtWidgets.QWidget):
@@ -258,7 +275,7 @@ class PluginDialog(QtWidgets.QDialog):
         self.upload_form.addRow("Source Type:", self.upload_type)
         
         self.file_widget = QgsFileWidget()
-        self.file_widget.setStorageMode(QgsFileWidget.GetDirectory)
+        self.file_widget.setStorageMode(FILE_WIDGET_DIRECTORY)
         self.upload_form.addRow("Map files:", self.file_widget)
         
         self.map_name_edit = QtWidgets.QLineEdit()
@@ -711,10 +728,11 @@ class PluginDialog(QtWidgets.QDialog):
                     except Exception:
                         updated_at = updated_at_raw[:10]  # fallback to date only
 
-                item_title = QtWidgets.QTableWidgetItem(title)
+                item_title = SortableTableWidgetItem(title, title.lower())
                 item_title.setData(USER_ROLE, map_data)
 
-                item_date = QtWidgets.QTableWidgetItem(updated_at)
+                # Use ISO string for sorting, dd/mm/yyyy for display
+                item_date = SortableTableWidgetItem(updated_at, updated_at_raw)
 
                 # Online status cell — centred circle emoji
                 status_label = QtWidgets.QLabel('🟢' if is_online else '🔴')
