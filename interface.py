@@ -118,7 +118,10 @@ class SortableTableWidgetItem(QtWidgets.QTableWidgetItem):
 
     def __lt__(self, other):
         if isinstance(other, SortableTableWidgetItem):
-            return self.sort_key < other.sort_key
+            # Handle None/empty keys by treating them as very small strings
+            s1 = self.sort_key if self.sort_key is not None else ""
+            s2 = other.sort_key if other.sort_key is not None else ""
+            return s1 < s2
         return super().__lt__(other)
 
 
@@ -875,7 +878,7 @@ class PluginDialog(QtWidgets.QDialog):
             if not ok or not title.strip():
                 return
 
-        self.progress_dialog = QtWidgets.QProgressDialog("Communicating with server, please wait...", None, 0, 0, self)
+        self.progress_dialog = QtWidgets.QProgressDialog("Publishing map, please wait...", None, 0, 0, self)
         self.progress_dialog.setWindowTitle("Please Wait")
         self.progress_dialog.setWindowModality(WINDOW_MODAL)
         self.progress_dialog.setCancelButton(None) # Remove cancel button to make it a true modal loader

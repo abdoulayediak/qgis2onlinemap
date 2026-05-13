@@ -15,8 +15,10 @@ tags=hosting, cloud, publish, share, qgis2threejs, qgis2web, 3D, BIM, digital tw
 icon=icon.png
 changelog=
     Version 1.2.0
-    - Fix: Upload of overized maps was running for too long and failing silently. Now it fails quicker if quota doesn't allow it, with an informative "Upload limit exceeded" message.
+    - Fix: Upload of overized maps was running for too long and failing silently (or prompting the "QtError: NetworkError.InternalServerError" error message). 
+      Now it fails quicker if quota doesn't allow it, with an informative "Upload limit exceeded" message.
     - Fix: Map sorting on the "Projects" list based on last updated date was wrong. Fixed it.
+    - Improvement: Better error messages to facilitate troubleshooting.
     - Change: Modified the file upload process for a better handling of large files.
 
     Version 1.1.0

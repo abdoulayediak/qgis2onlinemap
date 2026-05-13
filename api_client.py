@@ -40,7 +40,7 @@ class ApiClient:
             self.base_url = "https://qgis2onlinemap.com/api"
             self.app_url = "https://qgis2onlinemap.com/app"
 
-    def _execute_request(self, request, data=None, multipart=None):
+    def _execute_request(self, request, data=None, multipart=None, method=None):
         """
         Synchronously executes a QNetworkRequest using a local QEventLoop.
         """
@@ -67,7 +67,9 @@ class ApiClient:
             except AttributeError:
                 pass
 
-        if multipart:
+        if method == "PUT":
+            reply = nam.put(request, data)
+        elif multipart:
             reply = nam.post(request, multipart)
         elif data:
             reply = nam.post(request, data)
@@ -92,10 +94,11 @@ class ApiClient:
                     try:
                         server_data = json.loads(decoded)
                         if isinstance(server_data, dict):
-                            if 'error' in server_data:
-                                error_msg = server_data['error']
-                            elif 'message' in server_data:
-                                error_msg = server_data['message']
+                            error_msg = server_data.get('error', server_data.get('message', error_msg))
+                            if 'details' in server_data:
+                                error_msg += f"\nDetails: {server_data['details']}"
+                            if 'suggestion' in server_data:
+                                error_msg += f"\nSuggestion: {server_data['suggestion']}"
                         elif isinstance(server_data, str):
                             error_msg = server_data
                     except json.JSONDecodeError:
@@ -107,7 +110,7 @@ class ApiClient:
             
             # If the error is still generic (like "Forbidden"), provide more context
             if status_code == 403 and (error_msg.strip().lower() == "forbidden" or error_msg.strip().lower() == "unauthorized"):
-                error_msg = "Access Denied (403). Please verify your QGIS Plugin Key or check your map storage limits in the dashboard."
+                error_msg = "Access Denied (403). Please try logging in again."
             elif status_code == 404 and (error_msg.strip().lower() == "not found"):
                 error_msg = "Server endpoint not found (404). Please ensure you are using the latest version of the plugin."
             elif status_code == 413:
@@ -138,13 +141,19 @@ class ApiClient:
         if not self.api_key:
             raise Exception("API Key is not set.")
 
-        # --- STEP 0: Calculate uncompressed size BEFORE zipping ---
+        # --- STEP 0: Calculate uncompressed size and VALIDATE structure ---
         uncompressed_bytes = 0
+        has_index = False
         for root, dirs, files in os.walk(folder_path):
             for file in files:
+                if file.lower() == 'index.html':
+                    has_index = True
                 abs_p = os.path.join(root, file)
                 uncompressed_bytes += os.path.getsize(abs_p)
         uncompressed_mb = uncompressed_bytes / (1024 * 1024)
+
+        if not has_index:
+            raise Exception("Invalid Map: No 'index.html' found in the selected folder.")
 
         zip_path = os.path.join(tempfile.gettempdir(), f"qgis2onlinemap_{map_title.replace(' ', '_')}.zip")
 
@@ -175,13 +184,24 @@ class ApiClient:
         if uncompressed_mb:
             query_params.append(f"uncompressedSizeMB={uncompressed_mb:.2f}")
         elif os.path.exists(zip_path):
-            # Calculate uncompressed size of the ZIP archive
+            # Calculate uncompressed size and validate structure of the ZIP archive
             try:
                 with zipfile.ZipFile(zip_path, 'r') as zf:
-                    u_bytes = sum([zinfo.file_size for zinfo in zf.infolist()])
+                    u_bytes = 0
+                    has_index = False
+                    for info in zf.infolist():
+                        if not info.is_dir():
+                            u_bytes += info.file_size
+                            if info.filename.lower().endswith('index.html'):
+                                has_index = True
+                    
+                    if not has_index:
+                        raise Exception("Invalid Map: No 'index.html' found in the ZIP archive.")
+                    
                     u_mb = u_bytes / (1024 * 1024)
                     query_params.append(f"uncompressedSizeMB={u_mb:.2f}")
-            except Exception:
+            except Exception as e:
+                if "Invalid Map" in str(e): raise e
                 zip_size_mb = os.path.getsize(zip_path) / (1024 * 1024)
                 query_params.append(f"uncompressedSizeMB={zip_size_mb:.2f}")
 
@@ -227,7 +247,7 @@ class ApiClient:
             zip_data = f.read()
 
         from qgis.PyQt.QtCore import QByteArray
-        self._execute_request(put_request, data=QByteArray(zip_data))
+        self._execute_request(put_request, data=QByteArray(zip_data), method="PUT")
 
         # --- STEP 3: Finalize upload ---
         print(f">>> [Plugin] Finalizing map {server_map_id}...")
