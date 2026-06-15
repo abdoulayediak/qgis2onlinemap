@@ -32,7 +32,7 @@ class Qgis2OnlineMapPlugin:
         """
         if not self.dialog:
             self.dialog = PluginDialog(self.iface, self.iface.mainWindow())
-            
+
         # Check if logged in
         if not self.dialog.api_client.api_key:
             self.dialog.tabs.setCurrentWidget(self.dialog.settings_tab)
@@ -40,7 +40,7 @@ class Qgis2OnlineMapPlugin:
         else:
             self.dialog.tabs.setCurrentWidget(self.dialog.upload_tab)
             self.dialog.file_widget.setFilePath(target_folder)
-            
+
         self.dialog.show()
         self.dialog.raise_()
         self.dialog.activateWindow()
@@ -58,11 +58,11 @@ class Qgis2OnlineMapPlugin:
                 self.action = QAction("Qgis2OnlineMap", self.iface.mainWindow())
         except Exception:
             self.action = QAction("Qgis2OnlineMap", self.iface.mainWindow())
-            
+
         self.action.setObjectName("Qgis2OnlineMapAction")
         self.action.setToolTip("Qgis2OnlineMap - Publish Maps Online")
         self.action.triggered.connect(self.run)
-        
+
         # Add toolbar button and menu item
         self.iface.addToolBarIcon(self.action)
         self.iface.addPluginToWebMenu("&Qgis2OnlineMap", self.action)
@@ -82,7 +82,7 @@ class Qgis2OnlineMapPlugin:
         # Create the dialog (after translation) and keep reference
         if not self.dialog:
             self.dialog = PluginDialog(self.iface, self.iface.mainWindow())
-        
+
         # show the dialog
         self.dialog.show()
         # Bring it to front

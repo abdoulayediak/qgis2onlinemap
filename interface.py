@@ -32,6 +32,7 @@ class OAuthHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass  # Suppress console logging
 
+
 # Compatibility layer for PyQt5/PyQt6
 try:
     from qgis.PyQt import QtWidgets, QtCore, QtGui
@@ -112,7 +113,7 @@ class DragDropUploadWidget(QtWidgets.QWidget):
 
 class SortableTableWidgetItem(QtWidgets.QTableWidgetItem):
     """
-    A custom QTableWidgetItem that sorts based on a hidden sort_key 
+    A custom QTableWidgetItem that sorts based on a hidden sort_key
     rather than its display text.
     """
     def __init__(self, text, sort_key):
@@ -134,16 +135,16 @@ class NotLoggedInWidget(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(30)
-        
+
         self.img_label = QtWidgets.QLabel()
-        
+
         icon_dir = os.path.dirname(__file__)
         gif_path = os.path.join(icon_dir, 'icon.gif')
         png_path = os.path.join(icon_dir, 'icon.png')
-        
+
         if os.path.exists(gif_path):
             # Scale down slightly to fit well in the 819x513 dialog viewport
-            self.img_label.setFixedSize(500, 265) 
+            self.img_label.setFixedSize(500, 265)
             movie = QtGui.QMovie(gif_path)
             movie.setScaledSize(QtCore.QSize(500, 265))
             self.img_label.setMovie(movie)
@@ -155,35 +156,35 @@ class NotLoggedInWidget(QtWidgets.QWidget):
             pixmap = QtGui.QPixmap(png_path)
             self.img_label.setPixmap(pixmap)
             self.img_label.setScaledContents(True)
-            
+
         self.img_label.setAlignment(ALIGN_CENTER)
-        
+
         text_layout = QtWidgets.QVBoxLayout()
         text_layout.setSpacing(10)
-        
+
         self.msg_title = QtWidgets.QLabel("Start Publishing in seconds")
         self.msg_title.setStyleSheet("font-size: 18px; font-weight: bold; color: #0f172a;")
-        
+
         self.msg_text = QtWidgets.QLabel("Create a free account to unlock instant cloud hosting for your QGIS exports.")
         self.msg_text.setWordWrap(True)
         self.msg_text.setStyleSheet("font-size: 14px; color: #475569;")
-        
+
         self.btn_dashboard = QtWidgets.QPushButton("Get Started")
         self.btn_dashboard.setStyleSheet("background-color: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold;")
         self.btn_dashboard.setCursor(POINTING_HAND_CURSOR)
         self.btn_dashboard.clicked.connect(callback)
-        
+
         text_layout.addStretch()
         text_layout.addWidget(self.msg_title)
         text_layout.addWidget(self.msg_text)
-        
+
         btn_layout = QtWidgets.QHBoxLayout()
         btn_layout.addWidget(self.btn_dashboard)
         btn_layout.addStretch()
-        
+
         text_layout.addLayout(btn_layout)
         text_layout.addStretch()
-        
+
         layout.addStretch()
         layout.addWidget(self.img_label)
         layout.addLayout(text_layout)
@@ -203,7 +204,7 @@ class PluginDialog(QtWidgets.QDialog):
         self._last_maps = []
         self.login_timer = QtCore.QTimer(self)
         self.login_timer.timeout.connect(self.check_login_status)
-        
+
         self.setup_ui()
         self.load_settings()
 
@@ -213,26 +214,26 @@ class PluginDialog(QtWidgets.QDialog):
         """
         self.setWindowTitle("Qgis2OnlineMap - Publish Maps Online")
         self.resize(819, 513)
-        
+
         # --- Modern Styling (Now optional) ---
         # self.apply_custom_styling()
-        
+
         self.layout = QtWidgets.QVBoxLayout(self)
-        
+
         self.tabs = QtWidgets.QTabWidget()
         self.layout.addWidget(self.tabs)
-        
+
         # --- Tab 1: My Maps ---
         self.maps_tab = QtWidgets.QWidget()
         self.maps_layout = QtWidgets.QVBoxLayout(self.maps_tab)
-        
+
         self.maps_stack = QtWidgets.QStackedWidget()
         self.maps_layout.addWidget(self.maps_stack)
-        
+
         self.maps_content = QtWidgets.QWidget()
         self.maps_content_layout = QtWidgets.QVBoxLayout(self.maps_content)
         self.maps_content_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.table_widget = QtWidgets.QTableWidget(0, 4)
         self.table_widget.setHorizontalHeaderLabels(["Map Name", "Updated", "Online", "Actions"])
         self.table_widget.horizontalHeader().setStretchLastSection(False)
@@ -244,88 +245,88 @@ class PluginDialog(QtWidgets.QDialog):
         self.table_widget.setEditTriggers(NO_EDIT_TRIGGERS)
         self.table_widget.setSortingEnabled(True)
         self.maps_content_layout.addWidget(self.table_widget)
-        
+
         self.btn_layout = QtWidgets.QHBoxLayout()
         self.btn_refresh = QtWidgets.QPushButton("Refresh List")
-        
+
         self.btn_manage = QtWidgets.QPushButton("Manage on Web")
         self.btn_manage.setObjectName("ViewBtn")
-        
+
         self.btn_layout.addWidget(self.btn_refresh)
         self.btn_layout.addWidget(self.btn_manage)
-        
+
         self.maps_content_layout.addLayout(self.btn_layout)
-        
+
         self.maps_not_logged_in = NotLoggedInWidget(self.start_login)
         self.maps_stack.addWidget(self.maps_not_logged_in)
         self.maps_stack.addWidget(self.maps_content)
-        
+
         self.tabs.addTab(self.maps_tab, "Projects")
-        
+
         # --- Tab: Publish ---
         self.upload_tab = DragDropUploadWidget()
         self.upload_tab.fileDropped.connect(self._handle_file_drop)
         self.upload_layout = QtWidgets.QVBoxLayout(self.upload_tab)
-        
+
         self.upload_stack = QtWidgets.QStackedWidget()
         self.upload_layout.addWidget(self.upload_stack)
-        
+
         self.upload_content = QtWidgets.QWidget()
         self.upload_content_layout = QtWidgets.QVBoxLayout(self.upload_content)
         self.upload_content_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.upload_form = QtWidgets.QFormLayout()
-        
+
         self.upload_type = QtWidgets.QComboBox()
         self.upload_type.addItems(["Folder", "Zip Archive"])
         self.upload_form.addRow("Source Type:", self.upload_type)
-        
+
         self.file_widget = QgsFileWidget()
         self.file_widget.setStorageMode(FILE_WIDGET_DIRECTORY)
         self.upload_form.addRow("Map files:", self.file_widget)
-        
+
         self.map_name_edit = QtWidgets.QLineEdit()
         self.map_name_edit.setPlaceholderText("Enter Map Title")
         self.upload_form.addRow("Map Title:", self.map_name_edit)
-        
+
         self.upload_content_layout.addLayout(self.upload_form)
         self.upload_content_layout.addSpacing(16)
-        
+
         # --- Drop Area ---
         self.drop_area_frame = QtWidgets.QFrame()
         self.drop_area_frame.setObjectName("DropArea")
         self.drop_area_frame.setMinimumHeight(120)
         self.drop_area_layout = QtWidgets.QVBoxLayout(self.drop_area_frame)
         self.drop_area_layout.setContentsMargins(20, 20, 20, 20)
-        
+
         self.upload_msg = QtWidgets.QLabel("📂 Drag & Drop a folder or .zip file here\nor use the controls above to select your map.")
         self.upload_msg.setAlignment(ALIGN_CENTER)
         self.upload_msg.setWordWrap(True)
         self.upload_msg.setStyleSheet("font-size: 14px; color: #64748b; font-weight: 500;")
-        
+
         self.drop_area_layout.addWidget(self.upload_msg)
         self.upload_content_layout.addWidget(self.drop_area_frame)
-        
+
         self.upload_content_layout.addStretch()
-        
+
         # --- Action Buttons (Right aligned) ---
         self.action_btn_layout = QtWidgets.QHBoxLayout()
         self.action_btn_layout.addStretch()
-        
+
         self.btn_do_upload = QtWidgets.QPushButton("Publish")
         self.btn_do_upload.setObjectName("UploadBtn")
         self.btn_do_upload.setFixedSize(110, 36)
         self.action_btn_layout.addWidget(self.btn_do_upload)
-        
+
         self.upload_content_layout.addLayout(self.action_btn_layout)
-        
+
         self.upload_not_logged_in = NotLoggedInWidget(self.start_login)
         self.upload_stack.addWidget(self.upload_not_logged_in)
         self.upload_stack.addWidget(self.upload_content)
 
-        
+
         self.tabs.addTab(self.upload_tab, "Publish Map")
-        
+
         # --- Tab: Settings ---
         self.settings_tab = QtWidgets.QWidget()
         self.settings_layout = QtWidgets.QVBoxLayout(self.settings_tab)
@@ -372,7 +373,7 @@ class PluginDialog(QtWidgets.QDialog):
         self.cmb_env.addItems(["Production", "Local (Emulator)"])
         self.cmb_env.currentTextChanged.connect(self.env_changed)
         dev_layout.addRow(self.lbl_env, self.cmb_env)
-        
+
         if os.environ.get('QGIS2ONLINEMAP_DEV') == '1':
             self.settings_layout.addWidget(self.dev_group)
         else:
@@ -381,7 +382,7 @@ class PluginDialog(QtWidgets.QDialog):
 
         self.settings_layout.addStretch()
         self.tabs.addTab(self.settings_tab, "Settings")
-        
+
         # --- Connections ---
         self.btn_refresh.clicked.connect(self.refresh_maps)
         self.btn_manage.clicked.connect(self.manage_on_web)
@@ -528,10 +529,10 @@ class PluginDialog(QtWidgets.QDialog):
         env = settings.value("env", "Production")
         use_theme = settings.value("use_custom_theme", False, type=bool)
         settings.endGroup()
-        
+
         self.cmb_env.setCurrentText(env)
         self.api_client.set_env(env)
-        
+
         # We need to ensure theme logic checks and unchecks safely
         if hasattr(self, 'chk_theme'):
             self.chk_theme.setChecked(use_theme)
@@ -539,10 +540,10 @@ class PluginDialog(QtWidgets.QDialog):
             self.apply_custom_styling()
         else:
             self.reset_to_native_styling()
-        
+
         if api_key:
             self.api_client.api_key = api_key
-            
+
         self.update_login_ui()
 
     def update_login_ui(self, revoked=False):
@@ -551,7 +552,7 @@ class PluginDialog(QtWidgets.QDialog):
                 self.maps_stack.setCurrentWidget(self.maps_content)
             if hasattr(self, 'upload_stack'):
                 self.upload_stack.setCurrentWidget(self.upload_content)
-                
+
             self.lbl_status.setText("🟢 Status: Logged In")
             self.lbl_status.setStyleSheet("color: #16a34a; font-weight: bold;")
             self.btn_login.setText("Reconnect / Refresh Login")
@@ -597,7 +598,7 @@ class PluginDialog(QtWidgets.QDialog):
         settings.setValue("env", env)
         settings.setValue("use_custom_theme", self.chk_theme.isChecked())
         settings.endGroup()
-        
+
         self.api_client.api_key = api_key
         self.api_client.set_env(env)
 
@@ -683,7 +684,7 @@ class PluginDialog(QtWidgets.QDialog):
 
         self.btn_refresh.setEnabled(False)
         self.btn_refresh.setText("⌛ Refreshing...")
-        
+
         # Clear table and show a loading message in the first row
         self.table_widget.setSortingEnabled(False)
         self.table_widget.setRowCount(1)
@@ -708,10 +709,10 @@ class PluginDialog(QtWidgets.QDialog):
         is_themed = self.chk_theme.isChecked()
         self.table_widget.verticalHeader().setDefaultSectionSize(48 if is_themed else 40)
         self.table_widget.setRowCount(0)
-        
+
         if not maps:
             return
-                
+
         try:
             self.table_widget.setRowCount(len(maps))
             for row, map_data in enumerate(maps):
@@ -752,9 +753,9 @@ class PluginDialog(QtWidgets.QDialog):
                 action_layout = QtWidgets.QHBoxLayout(action_widget)
                 action_layout.setContentsMargins(2, 2, 2, 2)
                 action_layout.setSpacing(4)
-                
+
                 is_themed = self.chk_theme.isChecked()
-                
+
                 btn_view = QtWidgets.QPushButton("👁️" if is_themed else "View")
                 btn_view.setToolTip("View on Web")
                 if is_themed:
@@ -764,7 +765,7 @@ class PluginDialog(QtWidgets.QDialog):
                 btn_view.setStyleSheet("background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;")
                 btn_view.setCursor(POINTING_HAND_CURSOR)
                 btn_view.clicked.connect(lambda checked, m=map_data: self.view_on_web(m))
-                
+
                 btn_copy = QtWidgets.QPushButton("🔗" if is_themed else "Copy")
                 btn_copy.setToolTip("Copy Viewer Link")
                 if is_themed:
@@ -774,7 +775,7 @@ class PluginDialog(QtWidgets.QDialog):
                 btn_copy.setStyleSheet("background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;")
                 btn_copy.setCursor(POINTING_HAND_CURSOR)
                 btn_copy.clicked.connect(lambda checked, m=map_data: self.copy_link(m))
-                
+
                 btn_update = QtWidgets.QPushButton("🔄" if is_themed else "Update")
                 btn_update.setToolTip("Update Map")
                 if is_themed:
@@ -783,15 +784,15 @@ class PluginDialog(QtWidgets.QDialog):
                     btn_update.setMinimumHeight(27)
                 btn_update.setStyleSheet("background-color: #8b5cf6; color: white; border: 1px solid #7c3aed; border-radius: 4px; font-size: 12px;")
                 btn_update.setCursor(POINTING_HAND_CURSOR)
-                
+
                 update_menu = QtWidgets.QMenu()
                 action_update_folder = update_menu.addAction("📂 Local Folder...")
                 action_update_zip = update_menu.addAction("📦 Zip Archive...")
                 btn_update.setMenu(update_menu)
-                
+
                 action_update_folder.triggered.connect(lambda checked, m=map_data: self.update_folder(m))
                 action_update_zip.triggered.connect(lambda checked, m=map_data: self.update_zip(m))
-                
+
                 action_layout.addWidget(btn_view)
                 action_layout.addWidget(btn_copy)
                 action_layout.addWidget(btn_update)
@@ -803,7 +804,7 @@ class PluginDialog(QtWidgets.QDialog):
             self.table_widget.setSortingEnabled(True)
             self.table_widget.horizontalHeader().setSectionResizeMode(1, HEADER_RESIZE_TO_CONTENTS)
             self.table_widget.horizontalHeader().setSectionResizeMode(2, HEADER_RESIZE_TO_CONTENTS)
-            
+
             if is_themed:
                 self.table_widget.horizontalHeader().setSectionResizeMode(3, HEADER_RESIZE_TO_CONTENTS)
             else:
@@ -816,7 +817,7 @@ class PluginDialog(QtWidgets.QDialog):
         self.btn_refresh.setEnabled(True)
         self.btn_refresh.setText("Refresh List")
         self.table_widget.setRowCount(0)
-        
+
         # If the error looks like an auth failure, force logout
         if "401" in err_msg or "403" in err_msg or "Unauthorized" in err_msg:
             if "Revoked" in err_msg:
@@ -834,7 +835,7 @@ class PluginDialog(QtWidgets.QDialog):
         if not map_data:
             map_data = self._get_selected_map()
         if not map_data: return
-        baseUrl = self.api_client.app_url.replace('/app', '') 
+        baseUrl = self.api_client.app_url.replace('/app', '')
         viewer_url = f"{baseUrl}/v/{map_data['id']}"
         clipboard = QtWidgets.QApplication.clipboard()
         clipboard.setText(viewer_url)
@@ -894,11 +895,11 @@ class PluginDialog(QtWidgets.QDialog):
 
     def _on_upload_finished(self, result):
         self.progress_dialog.close()
-        
+
         # Reset upload fields
         self.map_name_edit.clear()
         self.file_widget.setFilePath("")
-        
+
         map_id = result.get('mapId') if isinstance(result, dict) else None
         reply = QtWidgets.QMessageBox.question(
             self, "Upload Success",
@@ -908,7 +909,7 @@ class PluginDialog(QtWidgets.QDialog):
         self.refresh_maps()
         if reply == MSG_YES and map_id:
             self.view_on_web({'id': map_id})
-        
+
     def _on_upload_error(self, err_msg):
         self.progress_dialog.close()
         if "LIMIT_HIT:" in err_msg:
@@ -926,7 +927,7 @@ class PluginDialog(QtWidgets.QDialog):
                 import traceback
                 traceback.print_exc()
                 print(f">>> [Plugin] Failed to parse LIMIT_HIT details: {e}")
-        
+
         QtWidgets.QMessageBox.critical(self, "Upload Failed", f"Upload failed:\n{err_msg}")
 
     def _handle_file_drop(self, file_path):
@@ -950,15 +951,15 @@ class PluginDialog(QtWidgets.QDialog):
         else:
             self.file_widget.setStorageMode(QgsFileWidget.GetFile)
             self.file_widget.setFilter("Zip files (*.zip)")
-            
+
     def _auto_populate_title(self, path):
         if not path: return
-        
+
         if self.upload_type.currentText() == "Folder":
             name = os.path.basename(os.path.normpath(path))
         else:
             name = os.path.splitext(os.path.basename(path))[0]
-            
+
         self.map_name_edit.setText(name)
 
     def prepare_upload(self):
@@ -966,12 +967,12 @@ class PluginDialog(QtWidgets.QDialog):
         if not path or not os.path.exists(path):
             QtWidgets.QMessageBox.warning(self, "Invalid Path", "Please select a valid folder or file to upload.")
             return
-            
+
         title = self.map_name_edit.text().strip()
         if not title:
             QtWidgets.QMessageBox.warning(self, "Missing Title", "Please provide a name for this map.")
             return
-            
+
         is_zip = (self.upload_type.currentText() == "Zip Archive")
         self._perform_upload(path, is_zip, title)
 
@@ -979,10 +980,10 @@ class PluginDialog(QtWidgets.QDialog):
         if not map_data:
             map_data = self._get_selected_map()
         if not map_data: return
-        
+
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder to Replace Map")
         if not folder_path: return
-        
+
         # Automatically use the folder name as the new title
         title = os.path.basename(os.path.normpath(folder_path))
         self._perform_upload(folder_path, False, title, map_data.get('id'))
@@ -991,10 +992,10 @@ class PluginDialog(QtWidgets.QDialog):
         if not map_data:
             map_data = self._get_selected_map()
         if not map_data: return
-        
+
         zip_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Select Zip File to Replace Map", "", "Zip Files (*.zip)")
         if not zip_path: return
-        
+
         # Automatically use the ZIP filename as the new title
         title = os.path.splitext(os.path.basename(zip_path))[0]
         self._perform_upload(zip_path, True, title, map_data.get('id'))
@@ -1049,11 +1050,11 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
         self.current_limit_value = limit_details.get("currentLimitValue", 0)
         self.email = limit_details.get("email", "")
         self.event_logged = False
-        
+
         self.setWindowTitle("Upload Limit Reached" if self.user_tier == "free" else "Pro Limit Reached")
         self.setMinimumSize(468, 320)
         self.resize(468, 320)
-        
+
         self.setStyleSheet("""
             QDialog {
                 background-color: #ffffff;
@@ -1069,30 +1070,30 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
                 font-weight: 500;
             }
         """)
-        
+
         self.layout = QtWidgets.QVBoxLayout(self)
         self.layout.setContentsMargins(24, 24, 24, 24)
         self.layout.setSpacing(16)
-        
+
         self.stacked_layout = QtWidgets.QStackedLayout()
         self.layout.addLayout(self.stacked_layout)
-        
+
         self.init_main_view()
         self.init_thanks_view()
-        
+
     def init_main_view(self):
         self.main_widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(self.main_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(16)
-        
+
         title_text = "Upload Limit Reached" if self.user_tier == "free" else "Pro Limit Reached"
         self.title_label = QtWidgets.QLabel(title_text)
         title_color = "#991b1b" if self.user_tier == "free" else "#1e293b"
         self.title_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {title_color};")
         self.title_label.setAlignment(ALIGN_CENTER)
         layout.addWidget(self.title_label)
-        
+
         limit_desc = "unknown"
         if self.limit_type == "single_map_size":
             limit_desc = "map size"
@@ -1100,28 +1101,28 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
             limit_desc = "active maps count"
         elif self.limit_type == "total_storage":
             limit_desc = "total storage"
-            
+
         val_display = ""
         if self.limit_type == "map_count":
             val_display = f"{int(self.attempted_value)} maps"
         else:
             val_display = f"{round(self.attempted_value)} MB"
-            
+
         limit_limit_val = f"<b>{int(self.current_limit_value)} maps</b>" if self.limit_type == "map_count" else f"<b>{round(self.current_limit_value)}MB</b>"
         if self.user_tier == "free":
             body_text = f"Your <b>{limit_desc}</b> is <b>{val_display}</b> which exceeds your current limit of {limit_limit_val}. Upgrade to unlock higher limits (<b>500MB</b> per map, up to <b>30</b> projects)."
         else:
             body_text = f"Your <b>{limit_desc}</b> is <b>{val_display}</b> which exceeds your current limit of {limit_limit_val}. As we work on increasing these limits, what is your typical project size?"
-            
+
         self.body_label = QtWidgets.QLabel(body_text)
         self.body_label.setWordWrap(True)
         self.body_label.setStyleSheet("font-size: 13px; color: #64748b; line-height: 1.5;")
         self.body_label.setAlignment(ALIGN_CENTER)
         layout.addWidget(self.body_label)
-        
+
         options_layout = QtWidgets.QVBoxLayout()
         options_layout.setSpacing(8)
-        
+
         if self.user_tier == "free":
             btn_upgrade = QtWidgets.QPushButton("👑 Upgrade to Pro ($15/mo)")
             btn_upgrade.setStyleSheet("""
@@ -1140,7 +1141,7 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
             btn_upgrade.setCursor(POINTING_HAND_CURSOR)
             btn_upgrade.clicked.connect(self.on_upgrade_clicked)
             options_layout.addWidget(btn_upgrade)
-            
+
             btn_one_off = QtWidgets.QPushButton("I'd prefer to pay a one-time fee for this project.")
             btn_one_off.setStyleSheet("""
                 QPushButton {
@@ -1155,7 +1156,7 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
             btn_one_off.setCursor(POINTING_HAND_CURSOR)
             btn_one_off.clicked.connect(self.on_one_off_clicked)
             options_layout.addWidget(btn_one_off)
-            
+
             btn_cancel = QtWidgets.QPushButton("Cancel")
             btn_cancel.setStyleSheet("""
                 QPushButton {
@@ -1171,7 +1172,7 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
             btn_cancel.setCursor(POINTING_HAND_CURSOR)
             btn_cancel.clicked.connect(self.reject)
             options_layout.addWidget(btn_cancel)
-            
+
         else:
             self.poll_options = [
                 "500 MB - 1.5 GB",
@@ -1194,7 +1195,7 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
                 btn_opt.setCursor(POINTING_HAND_CURSOR)
                 btn_opt.clicked.connect(lambda checked, o=opt: self.on_poll_option_clicked(o))
                 options_layout.addWidget(btn_opt)
-                
+
             btn_close = QtWidgets.QPushButton("Close")
             btn_close.setStyleSheet("""
                 QPushButton {
@@ -1210,33 +1211,33 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
             btn_close.setCursor(POINTING_HAND_CURSOR)
             btn_close.clicked.connect(self.reject)
             options_layout.addWidget(btn_close)
-            
+
         layout.addLayout(options_layout)
         self.stacked_layout.addWidget(self.main_widget)
-        
+
     def init_thanks_view(self):
         self.thanks_widget = QtWidgets.QWidget()
         layout = QtWidgets.QVBoxLayout(self.thanks_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(20)
-        
+
         thanks_title = QtWidgets.QLabel("Thank You!")
         thanks_title_color = "#1e3a8a" if self.user_tier == "free" else "#0f766e"
         thanks_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {thanks_title_color};")
         thanks_title.setAlignment(ALIGN_CENTER)
         layout.addWidget(thanks_title)
-        
+
         thanks_msg = "Thanks, we've recorded your interest." if self.user_tier == "free" else "Thanks for the feedback! We are currently designing a high-capacity tier and will let you know when it's ready."
         self.thanks_label = QtWidgets.QLabel(thanks_msg)
         self.thanks_label.setWordWrap(True)
         self.thanks_label.setStyleSheet("font-size: 13px; color: #475569; line-height: 1.6;")
         self.thanks_label.setAlignment(ALIGN_CENTER)
         layout.addWidget(self.thanks_label)
-        
+
         btn_layout = QtWidgets.QHBoxLayout()
         btn_layout.setSpacing(12)
         btn_layout.addStretch()
-        
+
         if self.user_tier == "free":
             btn_back = QtWidgets.QPushButton("Back")
             btn_back.setStyleSheet("""
@@ -1252,7 +1253,7 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
             btn_back.setCursor(POINTING_HAND_CURSOR)
             btn_back.clicked.connect(self.on_back_clicked)
             btn_layout.addWidget(btn_back)
-            
+
         btn_close = QtWidgets.QPushButton("Close")
         close_bg = "#1e3a8a" if self.user_tier == "free" else "#0f766e"
         btn_close.setStyleSheet(f"""
@@ -1270,10 +1271,10 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
         btn_close.clicked.connect(self.accept)
         btn_layout.addWidget(btn_close)
         btn_layout.addStretch()
-        
+
         layout.addLayout(btn_layout)
         self.stacked_layout.addWidget(self.thanks_widget)
-        
+
     def on_upgrade_clicked(self):
         self.api_client.log_experiment_event(
             "pro_subscribe_clicked",
@@ -1283,13 +1284,13 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
             self.current_limit_value
         )
         self.event_logged = True
-        
+
         stripe_link = "https://buy.stripe.com/test_14A4gAclE29X79Rcw2bwk00" if self.api_client.env == "Local (Emulator)" else "https://buy.stripe.com/8x27sMgCU8mBceV8YkdjO00"
         if self.email:
             stripe_link += f"?prefilled_email={urllib.parse.quote(self.email)}"
         webbrowser.open(stripe_link)
         self.accept()
-        
+
     def on_one_off_clicked(self):
         self.api_client.log_experiment_event(
             "one_off_interest_clicked",
@@ -1300,7 +1301,7 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
         )
         self.event_logged = True
         self.stacked_layout.setCurrentWidget(self.thanks_widget)
-        
+
     def on_poll_option_clicked(self, option):
         self.api_client.log_experiment_event(
             "pro_tier_poll_answered",
@@ -1312,11 +1313,11 @@ class ExperimentLimitDialog(QtWidgets.QDialog):
         )
         self.event_logged = True
         self.stacked_layout.setCurrentWidget(self.thanks_widget)
-        
+
     def on_back_clicked(self):
         self.event_logged = False
         self.stacked_layout.setCurrentWidget(self.main_widget)
-        
+
     def reject(self):
         if not self.event_logged:
             self.api_client.log_experiment_event(

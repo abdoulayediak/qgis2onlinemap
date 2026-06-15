@@ -4,8 +4,8 @@ import tempfile
 import json
 import urllib.parse
 from qgis.core import QgsNetworkAccessManager
-from qgis.PyQt.QtCore import QUrl, QEventLoop, QIODevice, QT_VERSION
-from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply, QHttpMultiPart, QHttpPart
+from qgis.PyQt.QtCore import QUrl, QEventLoop, QT_VERSION
+from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply, QHttpMultiPart
 
 # Qt5/Qt6 Compatibility
 if QT_VERSION >= 0x060000:
@@ -86,7 +86,7 @@ class ApiClient:
         if error_code != NET_NO_ERROR:
             status_code = reply.attribute(HDR_STATUS_CODE)
             error_msg = reply.errorString()
-            
+
             try:
                 raw_data = reply.readAll().data()
                 if raw_data:
@@ -111,15 +111,15 @@ class ApiClient:
                 if str(e).startswith("LIMIT_HIT:"):
                     raise e
                 pass
-            
+
             # If the error is still generic (like "Forbidden"), provide more context
-            if status_code == 403 and (error_msg.strip().lower() == "forbidden" or error_msg.strip().lower() == "unauthorized"):
+            if status_code == 403 and (error_msg.strip().lower() in ["forbidden", "unauthorized"]):
                 error_msg = "Access Denied (403). Please try logging in again."
             elif status_code == 404 and (error_msg.strip().lower() == "not found"):
                 error_msg = "Server endpoint not found (404). Please ensure you are using the latest version of the plugin."
             elif status_code == 413:
                 error_msg = "Payload Too Large (413). The file you are trying to upload exceeds server capacity."
-            
+
             raise Exception(error_msg)
 
         return reply.readAll().data().decode('utf-8')
@@ -130,12 +130,12 @@ class ApiClient:
         """
         if not self.api_key:
             return
-        
+
         url = f"{self.base_url}/log-experiment-event"
         request = QNetworkRequest(QUrl(url))
         request.setRawHeader(b"Authorization", f"Bearer {self.api_key}".encode('utf-8'))
         request.setHeader(HDR_CONTENT_TYPE, "application/json")
-        
+
         payload = {
             "eventName": event_name,
             "userTier": user_tier,
@@ -145,7 +145,7 @@ class ApiClient:
         }
         if selected_option is not None:
             payload["selectedOption"] = selected_option
-            
+
         from qgis.PyQt.QtCore import QByteArray
         try:
             self._execute_request(request, data=QByteArray(json.dumps(payload).encode('utf-8')))
@@ -211,7 +211,7 @@ class ApiClient:
         query_params = []
         if map_id:
             query_params.append(f"mapId={urllib.parse.quote(map_id, safe='')}")
-        
+
         # Pass uncompressed size if known
         if uncompressed_mb:
             query_params.append(f"uncompressedSizeMB={uncompressed_mb:.2f}")
@@ -226,20 +226,21 @@ class ApiClient:
                             u_bytes += info.file_size
                             if info.filename.lower().endswith('index.html'):
                                 has_index = True
-                    
+
                     if not has_index:
                         raise Exception("Invalid Map: No 'index.html' found in the ZIP archive.")
-                    
+
                     u_mb = u_bytes / (1024 * 1024)
                     query_params.append(f"uncompressedSizeMB={u_mb:.2f}")
             except Exception as e:
-                if "Invalid Map" in str(e): raise e
+                if "Invalid Map" in str(e):
+                    raise e
                 zip_size_mb = os.path.getsize(zip_path) / (1024 * 1024)
                 query_params.append(f"uncompressedSizeMB={zip_size_mb:.2f}")
 
         url_params = "?" + "&".join(query_params) if query_params else ""
         get_url_endpoint = f"{self.base_url}/get-upload-url{url_params}"
-        
+
         request = QNetworkRequest(QUrl(get_url_endpoint))
         request.setRawHeader(b"Authorization", f"Bearer {self.api_key}".encode('utf-8'))
         response_text = self._execute_request(request)
@@ -271,7 +272,7 @@ class ApiClient:
             print(f">>> [Plugin] Warning: ZIP size ({zip_size_mb:.1f}MB) is significantly larger than limit.")
 
         # --- STEP 2: PUT the ZIP directly to GCS ---
-        print(f">>> [Plugin] Uploading binary to GCS...")
+        print(">>> [Plugin] Uploading binary to GCS...")
         put_request = QNetworkRequest(QUrl(gcs_url))
         put_request.setHeader(HDR_CONTENT_TYPE, "application/zip")
 
