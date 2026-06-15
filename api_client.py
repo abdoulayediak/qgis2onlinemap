@@ -94,6 +94,8 @@ class ApiClient:
                     try:
                         server_data = json.loads(decoded)
                         if isinstance(server_data, dict):
+                            if server_data.get('limitHit'):
+                                raise Exception(f"LIMIT_HIT:{json.dumps(server_data)}")
                             error_msg = server_data.get('error', server_data.get('message', error_msg))
                             if 'details' in server_data:
                                 error_msg += f"\nDetails: {server_data['details']}"
@@ -105,7 +107,9 @@ class ApiClient:
                         # Plain text error message from server
                         if 0 < len(decoded) < 500:
                             error_msg = decoded
-            except Exception:
+            except Exception as e:
+                if str(e).startswith("LIMIT_HIT:"):
+                    raise e
                 pass
             
             # If the error is still generic (like "Forbidden"), provide more context
@@ -119,6 +123,34 @@ class ApiClient:
             raise Exception(error_msg)
 
         return reply.readAll().data().decode('utf-8')
+
+    def log_experiment_event(self, event_name, user_tier, limit_type, attempted_value, current_limit_value, selected_option=None):
+        """
+        Logs a pricing experiment event to the backend.
+        """
+        if not self.api_key:
+            return
+        
+        url = f"{self.base_url}/log-experiment-event"
+        request = QNetworkRequest(QUrl(url))
+        request.setRawHeader(b"Authorization", f"Bearer {self.api_key}".encode('utf-8'))
+        request.setHeader(HDR_CONTENT_TYPE, "application/json")
+        
+        payload = {
+            "eventName": event_name,
+            "userTier": user_tier,
+            "limitType": limit_type,
+            "attemptedValue": attempted_value,
+            "currentLimitValue": current_limit_value
+        }
+        if selected_option is not None:
+            payload["selectedOption"] = selected_option
+            
+        from qgis.PyQt.QtCore import QByteArray
+        try:
+            self._execute_request(request, data=QByteArray(json.dumps(payload).encode('utf-8')))
+        except Exception as e:
+            print(f">>> [Plugin] Failed to log experiment event: {e}")
 
     def get_maps(self):
         """

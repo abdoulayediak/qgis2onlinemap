@@ -1,4 +1,5 @@
 import os
+import json
 import threading
 import webbrowser
 import urllib.parse
@@ -74,6 +75,8 @@ except ImportError:
     from PyQt5 import QtWidgets, QtCore, QtGui
     # Fallback to standard names if needed
     pass
+
+QT_VERSION = QtCore.QT_VERSION
 
 
 class DragDropUploadWidget(QtWidgets.QWidget):
@@ -908,6 +911,22 @@ class PluginDialog(QtWidgets.QDialog):
         
     def _on_upload_error(self, err_msg):
         self.progress_dialog.close()
+        if "LIMIT_HIT:" in err_msg:
+            try:
+                json_str = err_msg.split("LIMIT_HIT:", 1)[1].strip()
+                limit_details = json.loads(json_str)
+                dialog = ExperimentLimitDialog(self.api_client, limit_details, self)
+                if hasattr(dialog, 'exec'):
+                    dialog.exec()
+                else:
+                    dialog.exec_()
+                self.refresh_maps()
+                return
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f">>> [Plugin] Failed to parse LIMIT_HIT details: {e}")
+        
         QtWidgets.QMessageBox.critical(self, "Upload Failed", f"Upload failed:\n{err_msg}")
 
     def _handle_file_drop(self, file_path):
@@ -1017,3 +1036,295 @@ class UploadThread(QtCore.QThread):
             self.finished.emit(result)
         except Exception as e:
             self.error.emit(str(e))
+
+
+class ExperimentLimitDialog(QtWidgets.QDialog):
+    def __init__(self, api_client, limit_details, parent=None):
+        super().__init__(parent)
+        self.api_client = api_client
+        self.limit_details = limit_details
+        self.user_tier = limit_details.get("userTier", "free")
+        self.limit_type = limit_details.get("limitType", "unknown")
+        self.attempted_value = limit_details.get("attemptedValue", 0)
+        self.current_limit_value = limit_details.get("currentLimitValue", 0)
+        self.email = limit_details.get("email", "")
+        self.event_logged = False
+        
+        self.setWindowTitle("Upload Limit Reached" if self.user_tier == "free" else "Pro Limit Reached")
+        self.setMinimumSize(468, 320)
+        self.resize(468, 320)
+        
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #ffffff;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            }
+            QLabel {
+                color: #334155;
+            }
+            QPushButton {
+                padding: 10px 16px;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 500;
+            }
+        """)
+        
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.setContentsMargins(24, 24, 24, 24)
+        self.layout.setSpacing(16)
+        
+        self.stacked_layout = QtWidgets.QStackedLayout()
+        self.layout.addLayout(self.stacked_layout)
+        
+        self.init_main_view()
+        self.init_thanks_view()
+        
+    def init_main_view(self):
+        self.main_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(self.main_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
+        
+        title_text = "Upload Limit Reached" if self.user_tier == "free" else "Pro Limit Reached"
+        self.title_label = QtWidgets.QLabel(title_text)
+        title_color = "#991b1b" if self.user_tier == "free" else "#1e293b"
+        self.title_label.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {title_color};")
+        self.title_label.setAlignment(ALIGN_CENTER)
+        layout.addWidget(self.title_label)
+        
+        limit_desc = "unknown"
+        if self.limit_type == "single_map_size":
+            limit_desc = "map size"
+        elif self.limit_type == "map_count":
+            limit_desc = "active maps count"
+        elif self.limit_type == "total_storage":
+            limit_desc = "total storage"
+            
+        val_display = ""
+        if self.limit_type == "map_count":
+            val_display = f"{int(self.attempted_value)} maps"
+        else:
+            val_display = f"{round(self.attempted_value)} MB"
+            
+        limit_limit_val = f"<b>{int(self.current_limit_value)} maps</b>" if self.limit_type == "map_count" else f"<b>{round(self.current_limit_value)}MB</b>"
+        if self.user_tier == "free":
+            body_text = f"Your <b>{limit_desc}</b> is <b>{val_display}</b> which exceeds your current limit of {limit_limit_val}. Upgrade to unlock higher limits (<b>500MB</b> per map, up to <b>30</b> projects)."
+        else:
+            body_text = f"Your <b>{limit_desc}</b> is <b>{val_display}</b> which exceeds your current limit of {limit_limit_val}. As we work on increasing these limits, what is your typical project size?"
+            
+        self.body_label = QtWidgets.QLabel(body_text)
+        self.body_label.setWordWrap(True)
+        self.body_label.setStyleSheet("font-size: 13px; color: #64748b; line-height: 1.5;")
+        self.body_label.setAlignment(ALIGN_CENTER)
+        layout.addWidget(self.body_label)
+        
+        options_layout = QtWidgets.QVBoxLayout()
+        options_layout.setSpacing(8)
+        
+        if self.user_tier == "free":
+            btn_upgrade = QtWidgets.QPushButton("👑 Upgrade to Pro ($15/mo)")
+            btn_upgrade.setStyleSheet("""
+                QPushButton {
+                    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #6366f1, stop:1 #3b82f6);
+                    color: white;
+                    border: none;
+                    font-weight: bold;
+                    font-size: 14px;
+                    border-radius: 10px;
+                }
+                QPushButton:hover {
+                    background-color: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4f46e5, stop:1 #2563eb);
+                }
+            """)
+            btn_upgrade.setCursor(POINTING_HAND_CURSOR)
+            btn_upgrade.clicked.connect(self.on_upgrade_clicked)
+            options_layout.addWidget(btn_upgrade)
+            
+            btn_one_off = QtWidgets.QPushButton("I'd prefer to pay a one-time fee for this project.")
+            btn_one_off.setStyleSheet("""
+                QPushButton {
+                    background-color: #f8fafc;
+                    color: #475569;
+                    border: 1px solid #e2e8f0;
+                }
+                QPushButton:hover {
+                    background-color: #f1f5f9;
+                }
+            """)
+            btn_one_off.setCursor(POINTING_HAND_CURSOR)
+            btn_one_off.clicked.connect(self.on_one_off_clicked)
+            options_layout.addWidget(btn_one_off)
+            
+            btn_cancel = QtWidgets.QPushButton("Cancel")
+            btn_cancel.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: #64748b;
+                    border: none;
+                    text-decoration: underline;
+                }
+                QPushButton:hover {
+                    color: #334155;
+                }
+            """)
+            btn_cancel.setCursor(POINTING_HAND_CURSOR)
+            btn_cancel.clicked.connect(self.reject)
+            options_layout.addWidget(btn_cancel)
+            
+        else:
+            self.poll_options = [
+                "500 MB - 1.5 GB",
+                "1.5 GB - 4 GB",
+                "4 GB+",
+                "Not sure, I just need this upload to work"
+            ]
+            for opt in self.poll_options:
+                btn_opt = QtWidgets.QPushButton(opt)
+                btn_opt.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f8fafc;
+                        color: #334155;
+                        border: 1px solid #e2e8f0;
+                    }
+                    QPushButton:hover {
+                        background-color: #f1f5f9;
+                    }
+                """)
+                btn_opt.setCursor(POINTING_HAND_CURSOR)
+                btn_opt.clicked.connect(lambda checked, o=opt: self.on_poll_option_clicked(o))
+                options_layout.addWidget(btn_opt)
+                
+            btn_close = QtWidgets.QPushButton("Close")
+            btn_close.setStyleSheet("""
+                QPushButton {
+                    background-color: transparent;
+                    color: #64748b;
+                    border: none;
+                    text-decoration: underline;
+                }
+                QPushButton:hover {
+                    color: #334155;
+                }
+            """)
+            btn_close.setCursor(POINTING_HAND_CURSOR)
+            btn_close.clicked.connect(self.reject)
+            options_layout.addWidget(btn_close)
+            
+        layout.addLayout(options_layout)
+        self.stacked_layout.addWidget(self.main_widget)
+        
+    def init_thanks_view(self):
+        self.thanks_widget = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(self.thanks_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(20)
+        
+        thanks_title = QtWidgets.QLabel("Thank You!")
+        thanks_title_color = "#1e3a8a" if self.user_tier == "free" else "#0f766e"
+        thanks_title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {thanks_title_color};")
+        thanks_title.setAlignment(ALIGN_CENTER)
+        layout.addWidget(thanks_title)
+        
+        thanks_msg = "Thanks, we've recorded your interest." if self.user_tier == "free" else "Thanks for the feedback! We are currently designing a high-capacity tier and will let you know when it's ready."
+        self.thanks_label = QtWidgets.QLabel(thanks_msg)
+        self.thanks_label.setWordWrap(True)
+        self.thanks_label.setStyleSheet("font-size: 13px; color: #475569; line-height: 1.6;")
+        self.thanks_label.setAlignment(ALIGN_CENTER)
+        layout.addWidget(self.thanks_label)
+        
+        btn_layout = QtWidgets.QHBoxLayout()
+        btn_layout.setSpacing(12)
+        btn_layout.addStretch()
+        
+        if self.user_tier == "free":
+            btn_back = QtWidgets.QPushButton("Back")
+            btn_back.setStyleSheet("""
+                QPushButton {
+                    background-color: #f1f5f9;
+                    color: #475569;
+                    border: 1px solid #cbd5e1;
+                }
+                QPushButton:hover {
+                    background-color: #e2e8f0;
+                }
+            """)
+            btn_back.setCursor(POINTING_HAND_CURSOR)
+            btn_back.clicked.connect(self.on_back_clicked)
+            btn_layout.addWidget(btn_back)
+            
+        btn_close = QtWidgets.QPushButton("Close")
+        close_bg = "#1e3a8a" if self.user_tier == "free" else "#0f766e"
+        btn_close.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {close_bg};
+                color: white;
+                border: none;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                opacity: 0.9;
+            }}
+        """)
+        btn_close.setCursor(POINTING_HAND_CURSOR)
+        btn_close.clicked.connect(self.accept)
+        btn_layout.addWidget(btn_close)
+        btn_layout.addStretch()
+        
+        layout.addLayout(btn_layout)
+        self.stacked_layout.addWidget(self.thanks_widget)
+        
+    def on_upgrade_clicked(self):
+        self.api_client.log_experiment_event(
+            "pro_subscribe_clicked",
+            self.user_tier,
+            self.limit_type,
+            self.attempted_value,
+            self.current_limit_value
+        )
+        self.event_logged = True
+        
+        stripe_link = "https://buy.stripe.com/test_14A4gAclE29X79Rcw2bwk00" if self.api_client.env == "Local (Emulator)" else "https://buy.stripe.com/8x27sMgCU8mBceV8YkdjO00"
+        if self.email:
+            stripe_link += f"?prefilled_email={urllib.parse.quote(self.email)}"
+        webbrowser.open(stripe_link)
+        self.accept()
+        
+    def on_one_off_clicked(self):
+        self.api_client.log_experiment_event(
+            "one_off_interest_clicked",
+            self.user_tier,
+            self.limit_type,
+            self.attempted_value,
+            self.current_limit_value
+        )
+        self.event_logged = True
+        self.stacked_layout.setCurrentWidget(self.thanks_widget)
+        
+    def on_poll_option_clicked(self, option):
+        self.api_client.log_experiment_event(
+            "pro_tier_poll_answered",
+            self.user_tier,
+            self.limit_type,
+            self.attempted_value,
+            self.current_limit_value,
+            selected_option=option
+        )
+        self.event_logged = True
+        self.stacked_layout.setCurrentWidget(self.thanks_widget)
+        
+    def on_back_clicked(self):
+        self.event_logged = False
+        self.stacked_layout.setCurrentWidget(self.main_widget)
+        
+    def reject(self):
+        if not self.event_logged:
+            self.api_client.log_experiment_event(
+                "modal_closed",
+                self.user_tier,
+                self.limit_type,
+                self.attempted_value,
+                self.current_limit_value
+            )
+            self.event_logged = True
+        super().reject()

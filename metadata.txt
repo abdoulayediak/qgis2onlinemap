@@ -3,7 +3,7 @@ name=Qgis2OnlineMap
 qgisMinimumVersion=3.0
 qgisMaximumVersion=4.99
 description=One-click web map hosting. Share your QGIS, qgis2web, and Qgis2threejs projects online instantly.
-version=1.2.0
+version=1.3.0
 author=Abdoulaye Diakite
 email=contact@qgis2onlinemap.com
 about=Qgis2OnlineMap is a zero-config hosting bridge for QGIS. Securely publish 2D and 3D maps to the cloud and manage them via a professional dashboard. Optimized for secured and rapid stakeholder sharing. Compatible with QGIS 3.x and 4.0.
@@ -14,6 +14,11 @@ category=Web
 tags=hosting, cloud, publish, share, qgis2threejs, qgis2web, 3D, BIM, digital twin, webmap, leaflet, openlayers, gltf
 icon=icon.png
 changelog=
+    Version 1.3.0
+    - Feature: Added interactive dialogs when reaching account storage or map limits to help users manage upgrades seamlessly.
+    - Fix: Resolved an issue causing connection resets (ECONNRESET) and upload failures when publishing extremely large maps.
+    - Fix: Addressed a PyQt5 compatibility bug that caused raw JSON text to appear instead of formatted error modals on older QGIS versions.
+
     Version 1.2.0
     - Fix: Upload of overized maps was running for too long and failing silently (or prompting the "QtError: NetworkError.InternalServerError" error message). 
       Now it fails quicker if quota doesn't allow it, with an informative "Upload limit exceeded" message.
